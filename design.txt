@@ -1,0 +1,34 @@
+Design Document: Automated Code Reviews with CodeReviewGPT
+
+Overview:
+The CodeReviewGPT project is an open-source initiative aimed at automating code reviews using OpenAI's ChatGPT. The tool fetches pull request (PR) diffs from a given GitHub repository and leverages the ChatGPT model to review the changes and provide feedback.
+The main goal of this project is to assist developers in identifying potential issues, improvements, or areas of concern in their code changes, offering a supplementary layer of review that can be automated.
+
+Achievements:
+  Open Source Project: Created a well-documented open-source project, making it accessible and usable for the developer community.
+  Configurability: Implemented configuration options that allow users to specify settings via a config.json file or environment variables.
+  Token Management: Incorporated logic to handle large diffs by breaking them into manageable token sizes for the ChatGPT model.
+  Extensible Design: The modular design of the script allows for easy expansions and integrations with other tools or platforms.
+
+To-Do:
+  Enhance Configuration Options:
+    Add more settings to the config.json file/script.
+    Include environment variables to offer flexibility in configuration.
+    Pull Request Size Management:
+    Skip reviewing PRs that exceed a defined token size to ensure efficiency and avoid overloading the model.
+  GitHub Action Integration:
+    Design the script to be usable as a GitHub Action. This would allow automatic triggering of the code review process whenever a new pull request is made.
+  API Key Management:
+    For public repositories, avoid mandating the use of a GitHub API token. An API token should only be necessary for private repositories to ensure access.
+  Documentation:
+    Provide clear instructions for users on how to generate OpenAI and GitHub API keys, facilitating the setup process.
+  Error Handling:
+    Incorporate comprehensive error handling mechanisms to manage potential API failures, rate limits, and other exceptions.
+  
+Future Considerations:
+  As the project evolves, there's potential for:
+    
+    Integration with Other Platforms: Beyond GitHub, the tool could be adapted for other version control platforms like GitLab or Bitbucket. Also, other LLMS such as Claude 2
+    Customizable Feedback: Allow users to define the type or severity of feedback they want from the model (e.g., only critical issues, style feedback, etc.).
+    Continuous Learning: Incorporate a feedback loop where users can provide feedback on the model's reviews, allowing for continuous improvement of the review quality.
+    This design document provides a roadmap for the current state and future directions of the CodeReviewGPT project. The to-do list ensures that the project remains user-friendly, adaptable, and in line with the needs of the developer community.
