@@ -2,9 +2,30 @@
 An automation tool that leverages OpenAI's GPT models to streamline code reviews on GitHub. With easy configuration options and a focus on efficiency, it's designed to enhance the code review process by providing AI-driven insights directly from GitHub diffs. 
 [Design Document](https://raw.github.com/ian-hickey/CodeReviewGPT/main/design.txt)
 
-### Example Code Review
+### 🖼️ Example Code Review
 
 ![Code Review in terminal example](https://raw.github.com/ian-hickey/CodeReviewGPT/main/example-edit-1.png?raw=true "Angular Code Review")
+
+### 🔑 Generating API Tokens:
+
+1. GitHub API Token:
+To interact with private repositories or to avoid rate limits with public repositories, you'll need a GitHub API token. Here's how to generate one:
+
+Visit your GitHub settings: https://github.com/settings/tokens.
+Click on the "Generate new token" button.
+Provide a note or description for your token (e.g., "CodeReviewGPT").
+Under "Select Scopes", choose the necessary permissions for your token. For this script, "repo" access is usually sufficient for private repositories.
+Click on the "Generate token" button at the bottom.
+Copy the generated token and keep it safe. You won't be able to see it again!
+Note: Always keep your tokens secret. Do not commit them or expose them in public places.
+
+2. OpenAI API Token:
+To get automated code reviews from ChatGPT, you'll need an OpenAI API token. Follow these steps:
+Go to OpenAI's Platform website at platform.openai.com and sign in with an OpenAI account.
+Click your profile icon at the top-right corner of the page and select "View API Keys."
+Click "Create New Secret Key" to generate a new API key.
+
+Copy the key for use in the config.json or as an environment variable.
 
 ## 🔧 Configuration 
 
@@ -40,7 +61,7 @@ Ensure you have the following environment variables set:
 * `export REPO_OWNER="The owner of the GitHub repository"`
 * `export REPO_NAME="The name of the GitHub repository"`
 
-## 🚀 Usage
+## 🚀 Usage - Generate a code review!
 
 Set up your configuration using one of the methods mentioned above.
 Run the script using:
