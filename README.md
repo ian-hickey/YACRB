@@ -16,8 +16,13 @@ Populate the file with the following structure:
 
 Replace the placeholders with the appropriate values.
 
-Note: You can generate this config.json using the included config.sh script. To run it, type the following and follow the prompts:
-`./config.sh`
+Note: You can generate this config.json using the included config.sh script. 
+
+Make sure the script is executable: 
+
+`chmod +x config.sh`
+
+Then you can run the script with `./config.sh` to generate the config.json file.
 
 
 ### 🌍 Option 2: Using Environment Variables
