@@ -22,7 +22,7 @@ Make sure the script is executable:
 
 `chmod +x config.sh`
 
-Then you can run the script with `./config.sh` to generate the config.json file.
+Then you can run the script with `./config.sh` to generate the `config.json` file.
 
 
 ### 🌍 Option 2: Using Environment Variables
@@ -30,10 +30,10 @@ If you don't use a config.json file, the script will fallback to reading from en
 
 Ensure you have the following environment variables set:
 
-* export GITHUB_API_KEY="Your GitHub API key"
-* export CHATGPT_API_KEY="Your OpenAI API key"
-* export REPO_OWNER="The owner of the GitHub repository"
-* export REPO_NAME="The name of the GitHub repository"
+* `export GITHUB_API_KEY="Your GitHub API key"`
+* `export CHATGPT_API_KEY="Your OpenAI API key"`
+* `export REPO_OWNER="The owner of the GitHub repository"`
+* `export REPO_NAME="The name of the GitHub repository"`
 
 ## 🚀 Usage
 
@@ -56,6 +56,7 @@ The script will fetch pull requests and their diffs, and then use the OpenAI API
 * tiktoken
 * time
 * os
+
 Ensure you have these libraries installed before running the script.
 You can install them using:
 
