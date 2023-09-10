@@ -1,6 +1,10 @@
 # 🛠️ CodeReviewGPT 🤖
 An automation tool that leverages OpenAI's GPT models to streamline code reviews on GitHub. With easy configuration options and a focus on efficiency, it's designed to enhance the code review process by providing AI-driven insights directly from GitHub diffs.
 
+### Example Code Review
+
+![Code Review in terminal example](https://raw.github.com/ian-hickey/CodeReviewGPT/main/example-edit-1.png?raw=true "Angular Code Review")
+
 ## 🔧 Configuration 
 
 ### 📁 Option 1: Using a Config File
