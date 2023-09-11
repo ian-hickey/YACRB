@@ -7,9 +7,11 @@ import os
 GITHUB_API_URL = "https://api.github.com"
 OPEN_AI_URL = "https://api.openai.com/v1/chat/completions"
 HEADERS = {}
-TOKEN_SIZE = 5120 # Max tokens to send at once when splitting diffs
-MAX_TOKENS = 2048 # response size
-MAX_DIFF_TOKEN_SIZE = 30000  # Max token size of a diff past which the code review is skipped
+TOKEN_SIZE = 5120                    # Max tokens to send at once when splitting diffs
+MAX_TOKENS = 2048                    # response size
+MAX_DIFF_TOKEN_SIZE = 30000          # Max token size of a diff past which the code review is skipped
+MODEL = "gpt-4"                      # This assumes you have api access to gpt-4 if not, change it to another model that you have access to (gpt-3.5-turbo)
+
 
 # Load config from a JSON file or environment variables
 def load_config():
@@ -107,7 +109,7 @@ def review_code_with_chatgpt(diff, chatgpt_api_key):
         "Content-Type": "application/json"
     }
     data = {
-        "model": "gpt-4-0613",
+        "model": MODEL,
         "messages": [
             {
                 "role": "system",
