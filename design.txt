@@ -12,6 +12,7 @@ Achievements:
 
 To-Do:
   Enhance Configuration Options:
+    Allow saving the result as in different formats (text, json, html)
     Add more settings to the config.json file/script.
     Include environment variables to offer flexibility in configuration.
     Pull Request Size Management:
@@ -27,7 +28,6 @@ To-Do:
   
 Future Considerations:
   As the project evolves, there's potential for:
-    
     Integration with Other Platforms: Beyond GitHub, the tool could be adapted for other version control platforms like GitLab or Bitbucket. Also, other LLMS such as Claude 2
     Customizable Feedback: Allow users to define the type or severity of feedback they want from the model (e.g., only critical issues, style feedback, etc.).
     Continuous Learning: Incorporate a feedback loop where users can provide feedback on the model's reviews, allowing for continuous improvement of the review quality.
