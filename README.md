@@ -66,20 +66,6 @@ Ensure you have the following environment variables set:
 * `export REPO_OWNER="The owner of the GitHub repository"`
 * `export REPO_NAME="The name of the GitHub repository"`
 
-## 🚀 Usage - Generate a code review!
-
-Set up your configuration using one of the methods mentioned above.
-Run the script using:
-
-`python code-review.py`
-
-The script will fetch pull requests and their diffs, and then use the OpenAI API to review the changes.
-
-### 📊 Constants
-* TOKEN_SIZE: This determines the maximum tokens to send at once when splitting diffs.
-* MAX_TOKENS: This specifies the response size.
-* MAX_DIFF_TOKEN_SIZE: This is the maximum token size of a diff past which the code review will be skipped.
-  
 ### 📦 Dependencies
 
 * requests
@@ -94,3 +80,18 @@ You can install them using:
 `pip install requests json tiktoken`
 
 Note: time and os are part of the Python standard library and don't need to be installed separately.
+
+## 🚀 Usage - Generate a code review!
+
+Set up your configuration using one of the methods mentioned above.
+Run the script using:
+
+`python code-review.py`
+
+The script will fetch pull requests and their diffs, and then use the OpenAI API to review the changes.
+
+### 📊 Constants
+* TOKEN_SIZE: This determines the maximum tokens to send at once when splitting diffs.
+* MAX_TOKENS: This specifies the response size.
+* MAX_DIFF_TOKEN_SIZE: This is the maximum token size of a diff past which the code review will be skipped.
+  
