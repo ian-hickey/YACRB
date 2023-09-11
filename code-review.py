@@ -203,8 +203,9 @@ if __name__ == "__main__":
     
     review = review_code_with_chatgpt(diff, chatgpt_api_key)
 
-    # Print the 'content' value
+    # Print the review
+    print("CODE REVIEW START" + ("-" * 75) + "\n")
     print(review)
-    print("-" * 50)
+    print("\nCODE REVIEW END" + ("-" * 77))
 
 
