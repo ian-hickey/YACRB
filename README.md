@@ -8,7 +8,7 @@ An automation tool that leverages OpenAI's GPT models to streamline code reviews
 
 ### 🔑 Generating API Tokens:
 
-1. GitHub API Token:
+1. **GitHub API Token**:
 To interact with private repositories or to avoid rate limits with public repositories, you'll need a GitHub API token. Here's how to generate one:
 
 Visit your GitHub settings: https://github.com/settings/tokens.
@@ -19,7 +19,7 @@ Click on the "Generate token" button at the bottom.
 Copy the generated token and keep it safe. You won't be able to see it again!
 Note: Always keep your tokens secret. Do not commit them or expose them in public places.
 
-2. OpenAI API Token:
+2. **OpenAI API Token**:
 To get automated code reviews from ChatGPT, you'll need an OpenAI API token. Follow these steps:
 Go to OpenAI's Platform website at platform.openai.com and sign in with an OpenAI account.
 Click your profile icon at the top-right corner of the page and select "View API Keys."
@@ -42,7 +42,7 @@ Populate the file with the following structure:
 
 Replace the placeholders with the appropriate values.
 
-Note: You can generate this config.json using the included config.sh script. 
+**`Note: You can generate this config.json using the included config.sh script.`**
 
 Make sure the script is executable: 
 
