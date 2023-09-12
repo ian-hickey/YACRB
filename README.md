@@ -81,6 +81,8 @@ You can install them using:
 
 Note: time and os are part of the Python standard library and don't need to be installed separately.
 
+`(Or just use) pip install -r requirements.txt`
+
 ## 🚀 Usage - Generate a code review!
 
 Set up your configuration using one of the methods mentioned above.
