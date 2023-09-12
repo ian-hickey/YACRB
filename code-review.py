@@ -45,9 +45,6 @@ def filter_diff(diff_text):
     filtered_diff = '\n'.join(filtered_sections)
     return filtered_diff
 
-filtered_sample_diff_final_attempt = filter_diff_final_attempt(sample_diff)
-filtered_sample_diff_final_attempt
-
 # Load config from a JSON file or environment variables
 def load_config():
     """Load configuration data from a JSON file named 'config.json'.
