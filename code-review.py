@@ -3,6 +3,7 @@ import json
 import tiktoken
 import time
 import os
+import re
 
 GITHUB_API_URL = "https://api.github.com"
 OPEN_AI_URL = "https://api.openai.com/v1/chat/completions"
