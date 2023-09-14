@@ -4,42 +4,46 @@ import tiktoken
 import time
 import os
 import re
+import math
+from tqdm import tqdm
+
+from rate_limiter import RateLimiter
 
 GITHUB_API_URL = "https://api.github.com"
 OPEN_AI_URL = "https://api.openai.com/v1/chat/completions"
 HEADERS = {}
-TOKEN_SIZE = 5120                    # Max tokens to send at once when splitting diffs
-MAX_TOKENS = 2048                    # response size
-MAX_DIFF_TOKEN_SIZE = 30000          # Max token size of a diff past which the code review is skipped
-MODEL = "gpt-4"                      # This assumes you have api access to gpt-4 if not, change it to another model that you have access to (gpt-3.5-turbo)
+TOKEN_SIZE = 5120                   # Max tokens to send at once when splitting diffs
+MAX_TOKENS = 2048                   # response size
+MAX_DIFF_TOKEN_SIZE = 30000         # Max token size of a diff past which the code review is skipped
+MODEL = "gpt-4"                     # This assumes you have api access to gpt-4 if not, change it to another model that you have access to (gpt-3.5-turbo)
 
 def filter_diff(diff_text):
     """Filters the diff to remove minified css and js files, and ignore deletions."""
     # Split the diff text by sections
     sections = re.split(r'\ndiff --git', diff_text)
-    
+
     # Add back the "diff --git" prefix removed during splitting (except for the first section)
     sections = [sections[0]] + ['diff --git' + section for section in sections[1:]]
-    
+
     filtered_sections = []
 
     for section in sections:
         # Check if the section is for a minified or bundle file
         if re.search(r'\.(min\.js|min\.css)|bundle', section):
             continue
-        
+
         # Check if the section is only for deleting/moving a file
         deletions = re.findall(r'^-', section, re.MULTILINE)
         additions = re.findall(r'^\+', section, re.MULTILINE)
-        
+
         # If a file has been deleted (only deletions and the destination is /dev/null), skip it.
         if deletions and not additions and re.search(r'\+\+\+ /dev/null', section):
             continue
-        
+
         # If a file has been renamed, skip it.
         if re.search(r'rename from', section) and re.search(r'rename to', section):
             continue
-        
+
         filtered_sections.append(section)
 
     # Combine the filtered sections
@@ -71,7 +75,6 @@ github_api_key = config['GITHUB_API_KEY']
 chatgpt_api_key = config['CHATGPT_API_KEY']
 repo_owner = config['REPO_OWNER']
 repo_name = config['REPO_NAME']
-
 
 def get_pull_request(owner, repo, pr_number):
     """Fetch a single pull request from a given GitHub repository.
@@ -134,82 +137,98 @@ def encode_segments(tokens, TOKEN_SIZE):
     
     return segments
 
+def segment_diff_by_files(diff_text):
+    """
+    Segment the diff by individual files.
+    
+    Parameters:
+    - diff_text: The entire diff text.
+    
+    Returns:
+    - A list of segments, each segment corresponding to a file's diff.
+    """
+    
+    # Split the diff text by sections
+    sections = re.split(r'\ndiff --git', diff_text)
+    
+    # Add back the "diff --git" prefix removed during splitting (except for the first section)
+    sections = [sections[0]] + ['diff --git' + section for section in sections[1:]]
+    
+    return sections
 
 def review_code_with_chatgpt(diff, chatgpt_api_key):
-    """Get a code review from ChatGPT using the provided diff."""
+    
+    """
+    Get a code review from ChatGPT using the provided diff.
+    This version of the function segments the diff by files.
+    """
     headers = {
         "Authorization": f"Bearer {chatgpt_api_key}",
         "Content-Type": "application/json"
     }
-    data = {
-        "model": MODEL,
-        "messages": [
-            {
-                "role": "system",
-                "content": """You are a code reviewer analyzing GitHub diffs. 
-                Focus on style, best practices, and security. 
-                Due to token limits, some diffs may be partial; do your best with available information. 
-                Skip minified JavaScript, CSS, or other build byproducts. 
-                If encountered, note: 'Skipping File.'
-                """
-            },
-            {
-                "role": "user",
-                "content": f"{diff}"
-            }
-        ],
-        "max_tokens": MAX_TOKENS
-    }
-
+    
     # Get token count 
     tokenizer = tiktoken.get_encoding("gpt2")
-    tokens = tokenizer.encode(diff)
     
-    # Chunk diff into segments under token limit
-    token_strings = tokenizer.decode(tokens)
+    # Segment the diff by files
+    file_segments = segment_diff_by_files(diff)
+    
+    # Store aggregated reviews
+    aggregated_reviews = []
+    rate_limiter = RateLimiter(3, 10000)
+    current_file_request_count=1
+    segment_loader = tqdm(total=len(file_segments), position=0, leave=True, desc=f'Reviewing Code') 
+    for file_segment in file_segments:
+        if not file_segment.strip():
+            continue  # Skip empty segments
 
-    # TODO: SKIP PR based on it being larger than the defined max. 
-    segments = encode_segments(token_strings, TOKEN_SIZE)
+        tokens = tokenizer.encode(file_segment)
+        token_strings = tokenizer.decode(tokens)
 
-    # Send segments and collect responses
-    responses = []
-
-    # TODO: Update this logic to try to keep more of the diff in the same conversation.
-    totalTokenSent = 0
-    for segment in segments:
-        totalTokenSent += len(segment)
-        print(f"Sending {len(segment)} tokens [{totalTokenSent} sent so far]\n")
-        message = {
-            "role": "user",
-            "content": segment
-        }
-
-        data["messages"][1]= message
+        # Chunk diff into segments under token limit
+        segments = encode_segments(token_strings, TOKEN_SIZE)
         
-        response = requests.post(OPEN_AI_URL, headers=headers, data=json.dumps(data))  
-        print(f"OpenAI Response Status Code: {response.status_code}\n")
-        remaining_tokens = 10000 - totalTokenSent
-        if response.status_code == 429 or remaining_tokens < TOKEN_SIZE:
-            # Delay to avoid hitting rate limit
-            if response.status_code == 429:
-                print(f"Sleeping for 1 minute to avoid rate limiting [{response.status_code} Status code]\n")
-                time.sleep(60)
-                totalTokenSent = 0
-            if remaining_tokens < TOKEN_SIZE:
-                print(f"Sleeping for 20 seconds to avoid rate limiting [{remaining_tokens} tokens remaining]\n")
-                time.sleep(20)
+        # Send segments and collect responses
+        responses = []
+        totalTokenSent = 0
+        for segment in segments:
+            totalTokenSent += len(segment)
+            
+            message = {
+                "role": "user",
+                "content": segment
+            }
+            
+            data = {
+                "model": MODEL,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": """You are a code reviewer analyzing GitHub diffs. 
+                        Focus on style, best practices, and security. Due to token limits, some diffs may be partial; do your best with available information. 
+                        Include the file names you are reviewing in the review. Review each file with a one line summary of the review, and a couple bullet points. 
+                        If anything is really important, please elaborate more on that. Keep tone positive.
+                        """
+                    },
+                    message
+                ],
+                "max_tokens": MAX_TOKENS
+            }
 
-        if response.status_code not in [429, 200]:
-            error_msg = response.json().get('error', {}).get('message', 'Unknown error')
+            response = rate_limiter.make_request(OPEN_AI_URL, method="POST", headers=headers, data=data)
+            if response.status_code not in [429, 200]:
+                error_msg = response.json().get('error', {}).get('message', 'Unknown error')
+                return f"Review failed due to an error: {error_msg}"
             responses.append(response.json())
-            print(get_full_review(responses)) # Dump the responses we have so far.
-            print(f"Error from ChatGPT: {error_msg}\n")
-            return f"Review failed due to an error: {error_msg}"
-        
-        responses.append(response.json())
 
-    # Concatenate responses
-    return get_full_review(responses)
+        # Aggregate responses for the current file segment
+        aggregated_reviews.append(get_full_review(responses))
+        # Update the loader
+        segment_loader.update(1)
+    
+    # Return the aggregated review
+    segment_loader.close()
+    return "\n\n".join(aggregated_reviews)
 
 def get_full_review(responses):
     full_review = ""
