@@ -71,18 +71,14 @@ Ensure you have the following environment variables set:
 * requests
 * tiktoken
 * tqdm
-* time
-* os
-* json
 
 Ensure you have these libraries installed before running the script.
-You can install them using:
+Install:
 
-`You can pip install {each library you need}`
+`pip install -r requirements.txt`
 
-Note: time and os are part of the Python standard library and don't need to be installed separately.
-
-`(Or just use) pip install -r requirements.txt`
+If you prefer you can install them manually:
+`pip install {each library you need}`
 
 ## 🚀 Usage - Generate a code review!
 
