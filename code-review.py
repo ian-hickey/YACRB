@@ -15,7 +15,7 @@ HEADERS = {}
 TOKEN_SIZE = 5120                   # Max tokens to send at once when splitting diffs
 MAX_TOKENS = 2048                   # response size
 MAX_DIFF_TOKEN_SIZE = 30000         # Max token size of a diff past which the code review is skipped
-MODEL = "gpt-4"                     # This assumes you have api access to gpt-4 if not, change it to another model that you have access to (gpt-3.5-turbo)
+MODEL = "gpt-4"                     # This assumes you have api access to gpt-4 if not, change it to another model that you have access to (gpt-3.5-turbo, or gpt-3.5-turbo-16k)
 
 def filter_diff(diff_text):
     """Filters the diff to remove minified css and js files, and ignore deletions."""
@@ -239,8 +239,12 @@ def get_full_review(responses):
     return full_review
 
 if __name__ == "__main__":
-    pr_number = input("Enter the pull request number: ")
+    repo = input(f"Enter a repo name or enter to use the default [{repo_name}]")
+    if (len(repo) > 0): 
+        repo_name = repo
 
+    pr_number = input("Enter the pull request number: ")
+     
     HEADERS = {
         "Authorization": f"token {github_api_key}",
         "Accept": "application/vnd.github.v3+json"
@@ -261,5 +265,3 @@ if __name__ == "__main__":
     print("CODE REVIEW START" + ("-" * 75) + "\n")
     print(review)
     print("\nCODE REVIEW END" + ("-" * 77))
-
-
