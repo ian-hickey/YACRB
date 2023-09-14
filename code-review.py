@@ -5,6 +5,9 @@ import time
 import os
 import re
 import math
+from tqdm import tqdm
+
+from rate_limiter import RateLimiter
 
 GITHUB_API_URL = "https://api.github.com"
 OPEN_AI_URL = "https://api.openai.com/v1/chat/completions"
@@ -101,83 +104,6 @@ def encode_segments(tokens, TOKEN_SIZE):
     
     return segments
 
-
-def review_code_with_chatgpt(diff, chatgpt_api_key):
-    """Get a code review from ChatGPT using the provided diff."""
-    headers = {
-        "Authorization": f"Bearer {chatgpt_api_key}",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "model": MODEL,
-        "messages": [
-            {
-                "role": "system",
-                "content": """You are a code reviewer analyzing GitHub diffs. 
-                Focus on style, best practices, and security. 
-                Due to token limits, some diffs may be partial; do your best with available information. 
-                Skip minified JavaScript, CSS, or other build byproducts. 
-                If encountered, note: 'Skipping File.'
-                """
-            },
-            {
-                "role": "user",
-                "content": f"{diff}"
-            }
-        ],
-        "max_tokens": MAX_TOKENS
-    }
-
-    # Get token count 
-    tokenizer = tiktoken.get_encoding("gpt2")
-    tokens = tokenizer.encode(diff)
-    
-    # Chunk diff into segments under token limit
-    token_strings = tokenizer.decode(tokens)
-
-    # TODO: SKIP PR based on it being larger than the defined max. 
-    segments = encode_segments(token_strings, TOKEN_SIZE)
-
-    # Send segments and collect responses
-    responses = []
-
-    # TODO: Update this logic to try to keep more of the diff in the same conversation.
-    totalTokenSent = 0
-    for segment in segments:
-        totalTokenSent += len(segment)
-        print(f"Sending {len(segment)} tokens [{totalTokenSent} sent so far]\n")
-        message = {
-            "role": "user",
-            "content": segment
-        }
-
-        data["messages"][1]= message
-        
-        response = requests.post(OPEN_AI_URL, headers=headers, data=json.dumps(data))  
-        print(f"OpenAI Response Status Code: {response.status_code}\n")
-        remaining_tokens = 10000 - totalTokenSent
-        if response.status_code == 429 or remaining_tokens < TOKEN_SIZE:
-            # Delay to avoid hitting rate limit
-            if response.status_code == 429:
-                print(f"Sleeping for 1 minute to avoid rate limiting [{response.status_code} Status code]\n")
-                time.sleep(60)
-                totalTokenSent = 0
-            if remaining_tokens < TOKEN_SIZE:
-                print(f"Sleeping for 20 seconds to avoid rate limiting [{remaining_tokens} tokens remaining]\n")
-                time.sleep(20)
-
-        if response.status_code not in [429, 200]:
-            error_msg = response.json().get('error', {}).get('message', 'Unknown error')
-            responses.append(response.json())
-            print(get_full_review(responses)) # Dump the responses we have so far.
-            print(f"Error from ChatGPT: {error_msg}\n")
-            return f"Review failed due to an error: {error_msg}"
-        
-        responses.append(response.json())
-
-    # Concatenate responses
-    return get_full_review(responses)
-
 def segment_diff_by_files(diff_text):
     """
     Segment the diff by individual files.
@@ -197,8 +123,8 @@ def segment_diff_by_files(diff_text):
     
     return sections
 
-def review_code_with_chatgpt_v2(diff, chatgpt_api_key):
-    sleepTime = 2
+def review_code_with_chatgpt(diff, chatgpt_api_key):
+    
     """
     Get a code review from ChatGPT using the provided diff.
     This version of the function segments the diff by files.
@@ -216,7 +142,9 @@ def review_code_with_chatgpt_v2(diff, chatgpt_api_key):
     
     # Store aggregated reviews
     aggregated_reviews = []
-    
+    rate_limiter = RateLimiter(3, 10000)
+    current_file_request_count=1
+    segment_loader = tqdm(total=len(file_segments), position=0, leave=True, desc=f'Reviewing Code') 
     for file_segment in file_segments:
         if not file_segment.strip():
             continue  # Skip empty segments
@@ -226,11 +154,10 @@ def review_code_with_chatgpt_v2(diff, chatgpt_api_key):
 
         # Chunk diff into segments under token limit
         segments = encode_segments(token_strings, TOKEN_SIZE)
-
+        
         # Send segments and collect responses
         responses = []
         totalTokenSent = 0
-        
         for segment in segments:
             totalTokenSent += len(segment)
             
@@ -255,26 +182,19 @@ def review_code_with_chatgpt_v2(diff, chatgpt_api_key):
                 "max_tokens": MAX_TOKENS
             }
 
-            response = requests.post(OPEN_AI_URL, headers=headers, data=json.dumps(data))
-            remaining_tokens = 10000 - totalTokenSent
-            if response.status_code == 429 or remaining_tokens < TOKEN_SIZE:
-                # Delay to avoid hitting rate limit
-                if response.status_code == 429:
-                    print(f"Sleeping for {sleepTime}")
-                    time.sleep(sleepTime)
-                    sleepTime = math.exp(sleepTime)
-                    totalTokenSent = 0
-
+            response = rate_limiter.make_request(OPEN_AI_URL, method="POST", headers=headers, data=data)
             if response.status_code not in [429, 200]:
                 error_msg = response.json().get('error', {}).get('message', 'Unknown error')
                 return f"Review failed due to an error: {error_msg}"
-            
             responses.append(response.json())
-        
+
         # Aggregate responses for the current file segment
         aggregated_reviews.append(get_full_review(responses))
+        # Update the loader
+        segment_loader.update(1)
     
     # Return the aggregated review
+    segment_loader.close()
     return "\n\n".join(aggregated_reviews)
 
 def get_full_review(responses):
@@ -302,7 +222,7 @@ if __name__ == "__main__":
     }
     diff = get_pull_request_diff(repo_owner, repo_name, pr_number)
     
-    review = review_code_with_chatgpt_v2(diff, chatgpt_api_key)
+    review = review_code_with_chatgpt(diff, chatgpt_api_key)
 
     # Print the review
     print("CODE REVIEW START" + ("-" * 75) + "\n")
