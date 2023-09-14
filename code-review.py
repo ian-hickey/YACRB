@@ -17,6 +17,39 @@ MAX_TOKENS = 2048                   # response size
 MAX_DIFF_TOKEN_SIZE = 30000         # Max token size of a diff past which the code review is skipped
 MODEL = "gpt-4"                     # This assumes you have api access to gpt-4 if not, change it to another model that you have access to (gpt-3.5-turbo)
 
+def filter_diff(diff_text):
+    """Filters the diff to remove minified css and js files, and ignore deletions."""
+    # Split the diff text by sections
+    sections = re.split(r'\ndiff --git', diff_text)
+
+    # Add back the "diff --git" prefix removed during splitting (except for the first section)
+    sections = [sections[0]] + ['diff --git' + section for section in sections[1:]]
+
+    filtered_sections = []
+
+    for section in sections:
+        # Check if the section is for a minified or bundle file
+        if re.search(r'\.(min\.js|min\.css)|bundle', section):
+            continue
+
+        # Check if the section is only for deleting/moving a file
+        deletions = re.findall(r'^-', section, re.MULTILINE)
+        additions = re.findall(r'^\+', section, re.MULTILINE)
+
+        # If a file has been deleted (only deletions and the destination is /dev/null), skip it.
+        if deletions and not additions and re.search(r'\+\+\+ /dev/null', section):
+            continue
+
+        # If a file has been renamed, skip it.
+        if re.search(r'rename from', section) and re.search(r'rename to', section):
+            continue
+
+        filtered_sections.append(section)
+
+    # Combine the filtered sections
+    filtered_diff = '\n'.join(filtered_sections)
+    return filtered_diff
+
 # Load config from a JSON file or environment variables
 def load_config():
     """Load configuration data from a JSON file named 'config.json'.
@@ -73,7 +106,7 @@ def get_pull_request_diff(owner, repo, pr_number):
     url = f"{GITHUB_API_URL}/repos/{owner}/{repo}/pulls/{pr_number}.diff"
     print(url)
     response = requests.get(url, headers=HEADERS)
-    return response.text
+    return filter_diff(response.text)
 
 def count_tokens(token_list):
     return len(token_list)
