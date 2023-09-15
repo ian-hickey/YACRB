@@ -3,6 +3,7 @@ An automation tool that leverages OpenAI's GPT models to streamline code reviews
 [Design Document](https://raw.github.com/ian-hickey/CodeReviewGPT/main/design.txt)
 
 * Easy and fast setup - takes about a minute once you have keys
+* Choose the pull request from a menu
 * Doesn't require a node server
 * Doesn't require giving unsecure access via Chrome Webstore
 * Handles OpenAPI Rate Limiting
@@ -71,6 +72,7 @@ Ensure you have the following environment variables set:
 * requests
 * tiktoken
 * tqdm
+* termcolor
 
 Ensure you have these libraries installed before running the script.
 Install:
