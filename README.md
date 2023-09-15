@@ -9,7 +9,7 @@ An automation tool that leverages OpenAI's GPT models to streamline code reviews
 * Handles OpenAPI Rate Limiting
 
 ### 🖼️ Example Code Review
-
+![Menu](https://raw.github.com/ian-hickey/yacrb/main/Screenshot-Menu.png?raw=true "Code Review")
 ![Code Review in terminal example](https://raw.github.com/ian-hickey/yacrb/main/example-edit-1.png?raw=true "Angular Code Review")
 
 ### 🔑 Generating API Tokens:
