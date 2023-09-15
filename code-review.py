@@ -6,8 +6,28 @@ import os
 import re
 import math
 from tqdm import tqdm
+from termcolor import colored
 
 from rate_limiter import RateLimiter
+
+def print_asc_logo(): 
+    logo = """
+ .----------------.  .----------------.  .----------------.  .----------------.  .----------------. 
+| .--------------. || .--------------. || .--------------. || .--------------. || .--------------. |
+| |  ____  ____  | || |      __      | || |     ______   | || |  _______     | || |   ______     | |
+| | |_  _||_  _| | || |     /  \     | || |   .' ___  |  | || | |_   __ \    | || |  |_   _ \    | |
+| |   \ \  / /   | || |    / /\ \    | || |  / .'   \_|  | || |   | |__) |   | || |    | |_) |   | |
+| |    \ \/ /    | || |   / ____ \   | || |  | |         | || |   |  __ /    | || |    |  __'.   | |
+| |    _|  |_    | || | _/ /    \ \_ | || |  \ `.___.'\  | || |  _| |  \ \_  | || |   _| |__) |  | |
+| |   |______|   | || ||____|  |____|| || |   `._____.'  | || | |____| |___| | || |  |_______/   | |
+| |              | || |              | || |              | || |              | || |              | |
+| '--------------' || '--------------' || '--------------' || '--------------' || '--------------' |
+ '----------------'  '----------------'  '----------------'  '----------------'  '----------------' """
+    git = """
+Star us on Github: https://github.com/ian-hickey/YACRB
+    """
+    print(colored(logo, "yellow"))
+    print(colored(git, "blue"))
 
 GITHUB_API_URL = "https://api.github.com"
 OPEN_AI_URL = "https://api.openai.com/v1/chat/completions"
@@ -16,6 +36,9 @@ TOKEN_SIZE = 5120                   # Max tokens to send at once when splitting 
 MAX_TOKENS = 2048                   # response size
 MAX_DIFF_TOKEN_SIZE = 30000         # Max token size of a diff past which the code review is skipped
 MODEL = "gpt-4"                     # This assumes you have api access to gpt-4 if not, change it to another model that you have access to (gpt-3.5-turbo, or gpt-3.5-turbo-16k)
+PER_PAGE = 10                       # How many pull requests to display per page in the menu
+current_menu_page = 1               # When displaying the menu, the current page
+next_url = None                     # The url for the next set of PR records
 
 def filter_diff(diff_text):
     """Filters the diff to remove minified css and js files, and ignore deletions."""
@@ -157,7 +180,6 @@ def segment_diff_by_files(diff_text):
     return sections
 
 def review_code_with_chatgpt(diff, chatgpt_api_key):
-    
     """
     Get a code review from ChatGPT using the provided diff.
     This version of the function segments the diff by files.
@@ -177,7 +199,7 @@ def review_code_with_chatgpt(diff, chatgpt_api_key):
     aggregated_reviews = []
     rate_limiter = RateLimiter(3, 10000)
     current_file_request_count=1
-    segment_loader = tqdm(total=len(file_segments), position=0, leave=True, desc=f'Reviewing Code') 
+    segment_loader = tqdm(total=len(file_segments), position=0, leave=True, desc=colored(f'Reviewing Code', "white")) 
     for file_segment in file_segments:
         if not file_segment.strip():
             continue  # Skip empty segments
@@ -238,12 +260,83 @@ def get_full_review(responses):
 
     return full_review
 
+def get_next_link(link_header):
+    """
+    Parse the Link header from GitHub API to get the next URL.
+    """
+    links = link_header.split(", ")
+    
+    for link in links:
+        parts = link.split("; ")
+        if len(parts) != 2:
+            continue
+        url, rel = parts
+        if rel == 'rel="next"':
+            # Remove < and > around the URL
+            return url[1:-1]
+    return None
+
+def get_pull_requests(user, repo, next=""):
+    params = {
+        "per_page": PER_PAGE,
+        "page": 1
+    }
+    HEADERS = {
+        "Authorization": f"token {github_api_key}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+
+    if len(next):
+        url = next
+        params={}
+    else: 
+        url = f"https://api.github.com/repos/{user}/{repo}/pulls"
+
+    
+    response = requests.get(url, headers=HEADERS, params=params)
+    global next_url
+    next_url = get_next_link(response.headers.get("Link", ""))
+    
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print("Error:", response.status_code)
+        return []
+
+def display_pr_menu(prs):
+    global next_url
+    print("\n")
+    for idx, pr in enumerate(prs, 1):
+        print(f"{idx}. {pr['title']} (#{pr['number']}) by {pr['user']['login']}")
+    
+    # If there are more than a page worth of menu options, display a more option.
+    if next_url != None:
+        print(colored(f"{len(prs) + 1}. More...", "light_blue"))
+
+    choice_str = input(colored("\nEnter the number of the pull request you'd like to choose: ", "light_green"))
+    choice = int(choice_str)
+    if 1 <= choice <= len(prs)+1: # have to +1 to allow for more option
+        # handle more option
+        if len(prs)+1 == choice:
+            if (next_url != None):
+                return display_pr_menu(get_pull_requests(repo_owner, repo_name, next_url ))
+        
+        # handle regular selection
+        selected_pr_number = prs[choice - 1]['number']
+        return int(selected_pr_number)
+    else:
+        return None
+
 if __name__ == "__main__":
-    repo = input(f"Enter a repo name or enter to use the default [{repo_name}]")
+    print("\n")
+    print_asc_logo()
+    repo = input(colored(f"Enter a repo name or enter to use the default [{repo_name}]: ", "white"))
     if (len(repo) > 0): 
         repo_name = repo
 
-    pr_number = input("Enter the pull request number: ")
+    # Display a menu of pull requests to the user. They display 10 at a time by default.
+    prs = get_pull_requests(repo_owner, repo_name)
+    pr_number = display_pr_menu(prs) 
      
     HEADERS = {
         "Authorization": f"token {github_api_key}",

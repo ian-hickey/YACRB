@@ -14,9 +14,10 @@ To-Do:
   Enhance Configuration Options:
     Allow saving the result as in different formats (text, json, html)
     Add more settings to the config.json file/script.
-    Include environment variables to offer flexibility in configuration.
+    Include environment variables to offer flexibility in configuration. DONE
     Pull Request Size Management:
-    Skip reviewing PRs that exceed a defined token size to ensure efficiency and avoid overloading the model.
+      Skip reviewing PRs that exceed a defined token size to ensure efficiency and avoid overloading the model.
+    Better Rate Limit Support DONE
   GitHub Action Integration:
     Design the script to be usable as a GitHub Action. This would allow automatic triggering of the code review process whenever a new pull request is made.
   API Key Management:
