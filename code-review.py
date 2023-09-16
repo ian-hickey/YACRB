@@ -1,8 +1,10 @@
+import sys
 import requests
 import json
 import tiktoken
 import os
 import re
+import argparse
 from tqdm import tqdm
 from termcolor import colored
 
@@ -88,8 +90,26 @@ def load_config():
         config['MODEL'] = os.environ.get('MODEL')
     return config
 
+def load_prompts():
+    """Load prompts data from a JSON file named 'prompts.json'."""
+    CONFIG_FILE = "prompts.json"
+    prompts = {}
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "r") as file:
+            prompts = json.load(file)
+    else:
+        print(colored("Expected to find a file named prompts.json that contains the prompt selections. It is missing.", "red"))
+        sys.exit()
+    return prompts
+
 # Load the configuration data
 config = load_config()
+
+# Load the prompt data
+prompts = load_prompts()
+
+# Set the default prompt
+prompt = prompts['general']
 
 # Extract individual config parameters
 try: 
@@ -216,7 +236,7 @@ def segment_diff_by_files(diff_text):
     
     return sections
 
-def review_code_with_chatgpt(diff, chatgpt_api_key):
+def review_code_with_chatgpt(diff, chatgpt_api_key, prompt_to_use, args):
     """
     Get a code review from ChatGPT using the provided diff.
     This version of the function segments the diff by files.
@@ -235,7 +255,6 @@ def review_code_with_chatgpt(diff, chatgpt_api_key):
     # Store aggregated reviews
     aggregated_reviews = []
     rate_limiter = RateLimiter(3, 10000)
-    current_file_request_count=1
     segment_loader = tqdm(total=len(file_segments), position=0, leave=True, desc=colored(f'Reviewing Code', "white")) 
     for file_segment in file_segments:
         if not file_segment.strip():
@@ -250,6 +269,7 @@ def review_code_with_chatgpt(diff, chatgpt_api_key):
         # Send segments and collect responses
         responses = []
         totalTokenSent = 0
+        model_to_use = args.model if args.model is not None else model
         for segment in segments:
             totalTokenSent += len(segment)
             
@@ -259,15 +279,11 @@ def review_code_with_chatgpt(diff, chatgpt_api_key):
             }
             
             data = {
-                "model": model,
+                "model": model_to_use,
                 "messages": [
                     {
                         "role": "system",
-                        "content": """You are a code reviewer analyzing GitHub diffs. 
-                        Focus on style, best practices, and security. Due to token limits, some diffs may be partial; do your best with available information. 
-                        Include the file names you are reviewing in the review. Review each file with a one line summary of the review, and a couple bullet points. 
-                        If anything is really important, please elaborate more on that. Keep tone positive.
-                        """
+                        "content": prompt_to_use
                     },
                     message
                 ],
@@ -337,13 +353,57 @@ def display_pr_menu(prs):
     else:
         return None
 
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Generate code reviews using ChatGPT.')
+    parser.add_argument('-format', dest='format', choices=['plain', 'json', 'html'], default='plain',
+                        help='Output format for the code review. Choices are plain, json, or html.')
+    parser.add_argument('-output', dest='output_file', default=None,
+                        help='Filename to save the code review. If not provided, the review is printed to the console.')
+    # Read the keys from the prompts object
+    keys_list = list(prompts.keys())
+    parser.add_argument('-type', dest='review_type', choices=keys_list, default="general",
+                        help=f'The type of code review to do. These will change if it reviews for security, performance etc.')
+    parser.add_argument('-model', dest='model', choices=['gpt-4', 'gpt-3.5-turbo', 'gpt-3.5-turbo-16k'], default=None,
+                        help='Change the model for this review')
+    return parser.parse_args()
+
+def format_review(review, format_type):
+    if format_type == 'plain':
+        return review
+    elif format_type == 'json':
+        return json.dumps({"review": review})
+    elif format_type == 'html':
+        with open("review_template.html", 'r') as template_file:
+            html_template = template_file.read()
+        
+        # Split the review content by file sections
+        file_sections = re.split(r'File: ', review)[1:]
+        
+        file_html_sections = []
+        for section in file_sections:
+            file_name, content = section.split('\n', 1)
+            file_html = f'<h2>File: {file_name}</h2><p>{content}</p>'
+            file_html_sections.append(file_html)
+        
+        # Replace the placeholder in the template with the populated file sections
+        populated_html = html_template.replace('<!-- The following section will be repeated for each file in the review -->', '\n'.join(file_html_sections))
+        
+        return populated_html
+ 
 if __name__ == "__main__":
+    args = parse_arguments()
     print("\n")
     print_asc_logo()
+
+    repo_own = input(colored(f"Enter a repo owner or enter to use the default [{repo_owner}]: ", "white"))
+    if (len(repo_own) > 0): 
+        repo_owner = repo_own
+
     repo = input(colored(f"Enter a repo name or enter to use the default [{repo_name}]: ", "white"))
     if (len(repo) > 0): 
         repo_name = repo
-    # Display a menu of pull requests to the user. They display 10 at a time by default.
+    # Display a menu of OPEN pull requests to the user. They display 10 at a time by default.
+    # If there are no open pull requests, give the user an option to select a single closed/merged PR by number.
     prs = get_pull_requests(repo_owner, repo_name)
     if (len(prs) == 0):
         print(colored(f"\n\n*** There are no OPEN pull requests for {repo_name}. ***\n\n", "yellow"))
@@ -356,8 +416,25 @@ if __name__ == "__main__":
     print(f"Reviewing PR #{pr_number} - {pr['title']}")
     
     diff = get_pull_request_diff(repo_owner, repo_name, pr_number)
-    review = review_code_with_chatgpt(diff, chatgpt_api_key)
-    # Print the review
-    print("CODE REVIEW START" + ("-" * 75) + "\n")
-    print(review)
-    print("\nCODE REVIEW END" + ("-" * 77))
+
+    if args.review_type:
+        review = review_code_with_chatgpt(diff, chatgpt_api_key, prompts[args.review_type], args)
+    else: 
+        review = review_code_with_chatgpt(diff, chatgpt_api_key, prompt, args)
+    formatted_review = format_review(review, args.format)
+    
+
+    if args.output_file:
+        # Check if 'out' directory exists, if not, create it
+        if not os.path.exists('out'):
+            os.makedirs('out')
+
+        # Ensure the output is saved in the 'out' subdirectory
+        output_path = os.path.join('out', args.output_file)
+        with open(output_path, 'w') as file:
+            file.write(formatted_review)
+    else:
+        print("\n")
+        print(formatted_review)
+        print("\n")
+

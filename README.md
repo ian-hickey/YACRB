@@ -99,8 +99,62 @@ Set up your configuration using one of the methods mentioned above.
 Run the script using:
 
 `python code-review.py`
-python -m pip install -r requirements.txt
+
 The script will fetch pull requests and their diffs, and then use the OpenAI API to review the changes.
+
+### 🖥️ Command Line Options
+When running the script, you can utilize various command-line options to customize the behavior:
+
+#### Option: `-format`
+
+Description: Specifies the output format for the code review.
+
+Choices: 
+
+* plain: Plain text format.
+* json: JSON structured format.
+* html: HTML formatted output.
+
+Default: plain
+Usage: `-format plain`
+
+#### Option: `-output`
+
+Description: Defines the filename where the code review will be saved. If this option is not provided, the review will be printed directly to the console.
+
+Usage: `-output review.txt`
+
+#### Option: `-type`
+
+Description: Determines the type of code review to perform. Each type has a unique focus, like security, performance, etc.
+
+Choices: The available choices are dynamically generated based on the predefined review types. As of now, they include:
+
+* general
+* security
+* performance
+* style
+* refactoring
+* Default: general
+
+Usage: `-type security`
+
+#### Option: `-model`
+
+Description: Allows you to choose the model to use for the review.
+
+Choices:
+
+* gpt-4
+* gpt-3.5-turbo
+* gpt-3.5-turbo-16k
+
+Default: If not provided, the default model defined in the script will be used.
+
+Usage: `-model gpt-4`
+
+#### Example Usage:
+`python code-review.py -format html -output review.html -type general -model gpt-4`
 
 ### 📊 Constants
 * TOKEN_SIZE: This determines the maximum tokens to send at once when splitting diffs.
