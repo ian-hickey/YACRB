@@ -11,6 +11,29 @@ class RateLimiter:
         self.reset_requests_interval = None
         self.reset_tokens_interval = None
 
+    def duration_to_seconds(duration):
+        """Converts a duration string (e.g., 1h30m15s) to seconds."""
+        total_seconds = 0
+
+        # Hours to seconds
+        hours = 0
+        if 'h' in duration:
+            hours, duration = duration.split('h')
+            total_seconds += int(hours) * 3600
+
+        # Minutes to seconds
+        minutes = 0
+        if 'm' in duration:
+            minutes, duration = duration.split('m')
+            total_seconds += int(minutes) * 60
+
+        # Seconds (if any left in the string)
+        if 's' in duration:
+            seconds = int(duration.split('s')[0])
+            total_seconds += seconds
+
+        return total_seconds
+
     def wait_until_reset(self):
         now = time.time()
         if self.reset_requests_interval and now < self.reset_requests_interval:
@@ -40,10 +63,10 @@ class RateLimiter:
             reset_tokens = response.headers.get('x-ratelimit-reset-tokens')
 
             if reset_requests:
-                self.reset_requests_interval = time.time() + int(reset_requests[:-1])
+                self.reset_requests_interval = time.time() + self.duration_to_seconds(reset_requests)
 
             if reset_tokens:
-                self.reset_tokens_interval = time.time() + int(reset_tokens[:-1])
+                self.reset_tokens_interval = time.time() + self.duration_to_seconds(reset_tokens)
 
             self.wait_until_reset()
             return self.make_request(url, method, headers, data)  # Retry the request
