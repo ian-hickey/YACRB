@@ -7,7 +7,6 @@ import re
 import argparse
 from tqdm import tqdm
 from termcolor import colored
-
 from rate_limiter import RateLimiter
 
 def print_asc_logo(): 
@@ -75,19 +74,36 @@ def filter_diff(diff_text):
 # Load config from a JSON file or environment variables
 def load_config():
     """Load configuration data from a JSON file named 'config.json'.
-    If the file doesn't exist, fallback to environment variables."""
+    If the file doesn't exist or some keys are missing, fallback to environment variables. 
+    If some keys are still missing, prompt the user with detailed instructions and then save them to 'config.json'."""
+    
     CONFIG_FILE = "config.json"
     config = {}
+    
+    # Attempt to load existing config file
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, "r") as file:
             config = json.load(file)
-    else:
-         # Fallback to environment variables if config file is absent
-        config['GITHUB_API_KEY'] = os.environ.get('GITHUB_API_KEY')
-        config['CHATGPT_API_KEY'] = os.environ.get('CHATGPT_API_KEY')
-        config['REPO_OWNER'] = os.environ.get('REPO_OWNER')
-        config['REPO_NAME'] = os.environ.get('REPO_NAME')
-        config['MODEL'] = os.environ.get('MODEL')
+    
+    # Check each key and fallback to environment variables or prompt the user if they're missing
+    prompts = {
+        'GITHUB_API_KEY': "Enter your GitHub API Key: ",
+        'CHATGPT_API_KEY': "Enter your OpenAI API Key: ",
+        'REPO_OWNER': ("From a GitHub repo link like 'https://github.com/OWNER/REPO_NAME',\n"
+                       "'OWNER' is the repository owner.\n"
+                       "Enter the repository owner (OWNER from the link): "),
+        'REPO_NAME': "Enter the repository name (REPO_NAME from the link): ",
+        'MODEL': "Enter the model name (gpt-4 [paid], gpt-3.5-turbo, or gpt-3.5-turbo-16k): "
+    }
+    
+    for key, prompt in prompts.items():
+        if not config.get(key):
+            config[key] = os.environ.get(key) or input(prompt)
+    
+    # Save updated config to file
+    with open(CONFIG_FILE, "w") as file:
+        json.dump(config, file)
+    
     return config
 
 def load_prompts():
@@ -101,26 +117,6 @@ def load_prompts():
         print(colored("Expected to find a file named prompts.json that contains the prompt selections. It is missing.", "red"))
         sys.exit()
     return prompts
-
-# Load the configuration data
-config = load_config()
-
-# Load the prompt data
-prompts = load_prompts()
-
-# Set the default prompt
-prompt = prompts['general']
-
-# Extract individual config parameters
-try: 
-    github_api_key = config['GITHUB_API_KEY']
-    chatgpt_api_key = config['CHATGPT_API_KEY']
-    repo_owner = config['REPO_OWNER']
-    repo_name = config['REPO_NAME']
-    model = config['MODEL']
-except Exception as e:
-    print(colored("An unexpected error occurred. Please ensure you have the config.json (OR ENV variables) and that they contain, keys, repo information, and model. Not found: ",'red'), e)
-    exit()
 
 def get_pull_requests(user, repo, next=""):
     params = {
@@ -391,50 +387,73 @@ def format_review(review, format_type):
         return populated_html
  
 if __name__ == "__main__":
-    args = parse_arguments()
-    print("\n")
-    print_asc_logo()
+    try:
+        # Load the configuration data
+        config = load_config()
 
-    repo_own = input(colored(f"Enter a repo owner or enter to use the default [{repo_owner}]: ", "white"))
-    if (len(repo_own) > 0): 
-        repo_owner = repo_own
+        # Load the prompt data
+        prompts = load_prompts()
 
-    repo = input(colored(f"Enter a repo name or enter to use the default [{repo_name}]: ", "white"))
-    if (len(repo) > 0): 
-        repo_name = repo
-    # Display a menu of OPEN pull requests to the user. They display 10 at a time by default.
-    # If there are no open pull requests, give the user an option to select a single closed/merged PR by number.
-    prs = get_pull_requests(repo_owner, repo_name)
-    if (len(prs) == 0):
-        print(colored(f"\n\n*** There are no OPEN pull requests for {repo_name}. ***\n\n", "yellow"))
-        pr_number = input(colored(f"To review a merged or closed PR, enter a PR number (https://www.github.com/{repo_owner}/{repo_name}/pulls/[pr_number]): ", "white"))
-        pr = get_pull_request(repo_owner, repo_name, pr_number)
-    else: 
-        pr_number = display_pr_menu(prs) 
-        pr = get_pull_request(repo_owner, repo_name, pr_number)
-    
-    print(f"Reviewing PR #{pr_number} - {pr['title']}")
-    
-    diff = get_pull_request_diff(repo_owner, repo_name, pr_number)
+        # Set the default prompt
+        prompt = prompts['general']
 
-    if args.review_type:
-        review = review_code_with_chatgpt(diff, chatgpt_api_key, prompts[args.review_type], args)
-    else: 
-        review = review_code_with_chatgpt(diff, chatgpt_api_key, prompt, args)
-    formatted_review = format_review(review, args.format)
-    
-
-    if args.output_file:
-        # Check if 'out' directory exists, if not, create it
-        if not os.path.exists('out'):
-            os.makedirs('out')
-
-        # Ensure the output is saved in the 'out' subdirectory
-        output_path = os.path.join('out', args.output_file)
-        with open(output_path, 'w') as file:
-            file.write(formatted_review)
-    else:
+        # Extract individual config parameters
+        try: 
+            github_api_key = config['GITHUB_API_KEY']
+            chatgpt_api_key = config['CHATGPT_API_KEY']
+            repo_owner = config['REPO_OWNER']
+            repo_name = config['REPO_NAME']
+            model = config['MODEL']
+        except Exception as e:
+            print(colored("An unexpected error occurred. Please ensure you have the config.json (OR ENV variables) and that they contain, keys, repo information, and model. Not found: ",'red'), e)
+            exit()
+        args = parse_arguments()
         print("\n")
-        print(formatted_review)
-        print("\n")
+        print_asc_logo()
+
+        repo_own = input(colored(f"Enter a repo owner or enter to use the default [{repo_owner}]: ", "white"))
+        if (len(repo_own) > 0): 
+            repo_owner = repo_own
+
+        repo = input(colored(f"Enter a repo name or enter to use the default [{repo_name}]: ", "white"))
+        if (len(repo) > 0): 
+            repo_name = repo
+        # Display a menu of OPEN pull requests to the user. They display 10 at a time by default.
+        # If there are no open pull requests, give the user an option to select a single closed/merged PR by number.
+        prs = get_pull_requests(repo_owner, repo_name)
+        if (len(prs) == 0):
+            print(colored(f"\n\n*** There are no OPEN pull requests for {repo_name}. ***\n\n", "yellow"))
+            pr_number = input(colored(f"To review a merged or closed PR, enter a PR number (https://www.github.com/{repo_owner}/{repo_name}/pulls/[pr_number]): ", "white"))
+            pr = get_pull_request(repo_owner, repo_name, pr_number)
+        else: 
+            pr_number = display_pr_menu(prs) 
+            pr = get_pull_request(repo_owner, repo_name, pr_number)
+        
+        print(f"Reviewing PR #{pr_number} - {pr['title']}")
+        
+        diff = get_pull_request_diff(repo_owner, repo_name, pr_number)
+
+        if args.review_type:
+            review = review_code_with_chatgpt(diff, chatgpt_api_key, prompts[args.review_type], args)
+        else: 
+            review = review_code_with_chatgpt(diff, chatgpt_api_key, prompt, args)
+        formatted_review = format_review(review, args.format)
+        
+
+        if args.output_file:
+            # Check if 'out' directory exists, if not, create it
+            if not os.path.exists('out'):
+                os.makedirs('out')
+
+            # Ensure the output is saved in the 'out' subdirectory
+            output_path = os.path.join('out', args.output_file)
+            with open(output_path, 'w') as file:
+                file.write(formatted_review)
+                print("\n")
+        else:
+            print("\n")
+            print(formatted_review)
+            print("\n")
+    except KeyboardInterrupt:
+        print("\n" * 2)
 
