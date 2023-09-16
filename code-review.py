@@ -1,11 +1,8 @@
-import sys
 import requests
 import json
 import tiktoken
-import time
 import os
 import re
-import math
 from tqdm import tqdm
 from termcolor import colored
 
@@ -102,7 +99,7 @@ try:
     repo_name = config['REPO_NAME']
     model = config['MODEL']
 except Exception as e:
-    print(colored("An unexpected error occurred. Please ensure you have the config.json and it contains, keys, repo information, and model. Not found: ",'red'), e)
+    print(colored("An unexpected error occurred. Please ensure you have the config.json (OR ENV variables) and that they contain, keys, repo information, and model. Not found: ",'red'), e)
     exit()
 
 def get_pull_requests(user, repo, next=""):
@@ -353,11 +350,7 @@ if __name__ == "__main__":
         pr_number = input(colored(f"To review a merged or closed PR, enter a PR number (https://www.github.com/{repo_owner}/{repo_name}/pulls/[pr_number]): ", "white"))
         pr = get_pull_request(repo_owner, repo_name, pr_number)
     else: 
-        pr_number = display_pr_menu([prs]) 
-        HEADERS = {
-            "Authorization": f"token {github_api_key}",
-            "Accept": "application/vnd.github.v3+json"
-        }
+        pr_number = display_pr_menu(prs) 
         pr = get_pull_request(repo_owner, repo_name, pr_number)
     
     print(f"Reviewing PR #{pr_number} - {pr['title']}")
