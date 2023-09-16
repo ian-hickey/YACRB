@@ -48,14 +48,19 @@ Populate the file with the following structure:
 
 Replace the placeholders with the appropriate values.
 
-**`Note: You can generate this config.json using the included config.sh script.`**
+**`Note: You can generate this config.json using the included config.sh (linux / mac) or config.bat (Windows) scripts.`**
 
+#### Linux / Mac
 Make sure the script is executable: 
 
 `chmod +x config.sh`
 
 Then you can run the script with `./config.sh` to generate the `config.json` file.
 
+#### Windows
+Open your command prompt (and cd to the correct folder): 
+
+Run the script with `config.bat` to generate the `config.json` file.
 
 ### 🌍 Option 2: Using Environment Variables
 If you don't use a config.json file, the script will fallback to reading from environment variables. 
@@ -79,8 +84,12 @@ Install:
 
 `pip install -r requirements.txt`
 
+If you get an error that PIP is not available, try running it with Python:
+`python -m pip install -r requirements.txt`
+  
+
 If you prefer you can install them manually:
-`pip install {each library you need}`
+`pip install {each library you need}` or `python -m pip install -r [package_name]`
 
 ## 🚀 Usage - Generate a code review!
 
