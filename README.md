@@ -43,7 +43,8 @@ Populate the file with the following structure:
     "GITHUB_API_KEY": "YOUR_GITHUB_API_KEY",
     "CHATGPT_API_KEY": "YOUR_OPENAI_API_KEY",
     "REPO_OWNER": "GITHUB_REPO_OWNER",
-    "REPO_NAME": "GITHUB_REPO_NAME"
+    "REPO_NAME": "GITHUB_REPO_NAME",
+    "MODEL": "gpt-4"
 `}
 
 Replace the placeholders with the appropriate values.
@@ -71,6 +72,7 @@ Ensure you have the following environment variables set:
 * `export CHATGPT_API_KEY="Your OpenAI API key"`
 * `export REPO_OWNER="The owner of the GitHub repository"`
 * `export REPO_NAME="The name of the GitHub repository"`
+* `export MODEL="gpt-4"`
 
 ### 📦 Dependencies
 
@@ -97,7 +99,7 @@ Set up your configuration using one of the methods mentioned above.
 Run the script using:
 
 `python code-review.py`
-
+python -m pip install -r requirements.txt
 The script will fetch pull requests and their diffs, and then use the OpenAI API to review the changes.
 
 ### 📊 Constants

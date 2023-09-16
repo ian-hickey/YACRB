@@ -1,3 +1,4 @@
+import sys
 import requests
 import json
 import tiktoken
@@ -24,7 +25,7 @@ def print_asc_logo():
 | '--------------' || '--------------' || '--------------' || '--------------' || '--------------' |
  '----------------'  '----------------'  '----------------'  '----------------'  '----------------' """
     git = """
-Star us on Github: https://github.com/ian-hickey/YACRB
+⭐ Star us on Github: https://github.com/ian-hickey/YACRB
     """
     print(colored(logo, "yellow"))
     print(colored(git, "blue"))
@@ -35,7 +36,6 @@ HEADERS = {}
 TOKEN_SIZE = 5120                   # Max tokens to send at once when splitting diffs
 MAX_TOKENS = 2048                   # response size
 MAX_DIFF_TOKEN_SIZE = 30000         # Max token size of a diff past which the code review is skipped
-MODEL = "gpt-4"                     # This assumes you have api access to gpt-4 if not, change it to another model that you have access to (gpt-3.5-turbo, or gpt-3.5-turbo-16k)
 PER_PAGE = 10                       # How many pull requests to display per page in the menu
 current_menu_page = 1               # When displaying the menu, the current page
 next_url = None                     # The url for the next set of PR records
@@ -88,16 +88,48 @@ def load_config():
         config['CHATGPT_API_KEY'] = os.environ.get('CHATGPT_API_KEY')
         config['REPO_OWNER'] = os.environ.get('REPO_OWNER')
         config['REPO_NAME'] = os.environ.get('REPO_NAME')
+        config['MODEL'] = os.environ.get('MODEL')
     return config
 
 # Load the configuration data
 config = load_config()
 
 # Extract individual config parameters
-github_api_key = config['GITHUB_API_KEY']
-chatgpt_api_key = config['CHATGPT_API_KEY']
-repo_owner = config['REPO_OWNER']
-repo_name = config['REPO_NAME']
+try: 
+    github_api_key = config['GITHUB_API_KEY']
+    chatgpt_api_key = config['CHATGPT_API_KEY']
+    repo_owner = config['REPO_OWNER']
+    repo_name = config['REPO_NAME']
+    model = config['MODEL']
+except Exception as e:
+    print(colored("An unexpected error occurred. Please ensure you have the config.json and it contains, keys, repo information, and model. Not found: ",'red'), e)
+    exit()
+
+def get_pull_requests(user, repo, next=""):
+    params = {
+        "per_page": PER_PAGE,
+        "page": 1
+    }
+    HEADERS = {
+        "Authorization": f"token {github_api_key}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+
+    if len(next):
+        url = next
+        params={}
+    else: 
+        url = f"https://api.github.com/repos/{user}/{repo}/pulls"
+
+    response = requests.get(url, headers=HEADERS, params=params)
+    global next_url
+    next_url = get_next_link(response.headers.get("Link", ""))
+    
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print("Error:", response.status_code)
+        return []
 
 def get_pull_request(owner, repo, pr_number):
     """Fetch a single pull request from a given GitHub repository.
@@ -110,6 +142,10 @@ def get_pull_request(owner, repo, pr_number):
     Returns:
     - A JSON response containing pull request details.
     """
+    HEADERS = {
+        "Authorization": f"token {github_api_key}",
+        "Accept": "application/vnd.github.v3+json"
+    }
     url = f"{GITHUB_API_URL}/repos/{owner}/{repo}/pulls/{pr_number}"
     response = requests.get(url, headers=HEADERS)
     return response.json()
@@ -126,6 +162,10 @@ def get_pull_request_diff(owner, repo, pr_number):
     Returns:
     - A text based DIFF response containing pull request changes.
     """
+    HEADERS = {
+        "Authorization": f"token {github_api_key}",
+        "Accept": "application/vnd.github.v3.diff"
+    }
     url = f"{GITHUB_API_URL}/repos/{owner}/{repo}/pulls/{pr_number}.diff"
     print(url)
     response = requests.get(url, headers=HEADERS)
@@ -222,7 +262,7 @@ def review_code_with_chatgpt(diff, chatgpt_api_key):
             }
             
             data = {
-                "model": MODEL,
+                "model": model,
                 "messages": [
                     {
                         "role": "system",
@@ -276,33 +316,6 @@ def get_next_link(link_header):
             return url[1:-1]
     return None
 
-def get_pull_requests(user, repo, next=""):
-    params = {
-        "per_page": PER_PAGE,
-        "page": 1
-    }
-    HEADERS = {
-        "Authorization": f"token {github_api_key}",
-        "Accept": "application/vnd.github.v3+json"
-    }
-
-    if len(next):
-        url = next
-        params={}
-    else: 
-        url = f"https://api.github.com/repos/{user}/{repo}/pulls"
-
-    
-    response = requests.get(url, headers=HEADERS, params=params)
-    global next_url
-    next_url = get_next_link(response.headers.get("Link", ""))
-    
-    if response.status_code == 200:
-        return response.json()
-    else:
-        print("Error:", response.status_code)
-        return []
-
 def display_pr_menu(prs):
     global next_url
     print("\n")
@@ -333,27 +346,24 @@ if __name__ == "__main__":
     repo = input(colored(f"Enter a repo name or enter to use the default [{repo_name}]: ", "white"))
     if (len(repo) > 0): 
         repo_name = repo
-
     # Display a menu of pull requests to the user. They display 10 at a time by default.
     prs = get_pull_requests(repo_owner, repo_name)
-    pr_number = display_pr_menu(prs) 
-     
-    HEADERS = {
-        "Authorization": f"token {github_api_key}",
-        "Accept": "application/vnd.github.v3+json"
-    }
-
-    pr = get_pull_request(repo_owner, repo_name, pr_number)
-    print(f"Reviewing PR #{pr_number} - {pr['title']}")
-
-    HEADERS = {
-        "Authorization": f"token {github_api_key}",
-        "Accept": "application/vnd.github.v3.diff"
-    }
-    diff = get_pull_request_diff(repo_owner, repo_name, pr_number)
+    if (len(prs) == 0):
+        print(colored(f"\n\n*** There are no OPEN pull requests for {repo_name}. ***\n\n", "yellow"))
+        pr_number = input(colored(f"To review a merged or closed PR, enter a PR number (https://www.github.com/{repo_owner}/{repo_name}/pulls/[pr_number]): ", "white"))
+        pr = get_pull_request(repo_owner, repo_name, pr_number)
+    else: 
+        pr_number = display_pr_menu([prs]) 
+        HEADERS = {
+            "Authorization": f"token {github_api_key}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        pr = get_pull_request(repo_owner, repo_name, pr_number)
     
+    print(f"Reviewing PR #{pr_number} - {pr['title']}")
+    
+    diff = get_pull_request_diff(repo_owner, repo_name, pr_number)
     review = review_code_with_chatgpt(diff, chatgpt_api_key)
-
     # Print the review
     print("CODE REVIEW START" + ("-" * 75) + "\n")
     print(review)
