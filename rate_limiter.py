@@ -11,6 +11,7 @@ class RateLimiter:
         self.reset_requests_interval = None
         self.reset_tokens_interval = None
 
+    @staticmethod
     def duration_to_seconds(duration):
         """Converts a duration string (e.g., 1h30m15s) to seconds."""
         total_seconds = 0
