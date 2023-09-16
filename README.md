@@ -8,11 +8,11 @@ An automation tool that leverages OpenAI's GPT models to streamline code reviews
 * Doesn't require giving unsecure access via Chrome Webstore
 * Handles OpenAPI Rate Limiting
 
-### 🖼️ Example Code Review
+## 🖼️ Example Code Review
 ![Menu](https://raw.github.com/ian-hickey/yacrb/main/Screenshot-Menu.png?raw=true "Code Review")
 ![Code Review in terminal example](https://raw.github.com/ian-hickey/yacrb/main/example-edit-1.png?raw=true "Angular Code Review")
 
-### 🔑 Generating API Tokens:
+## 🔑 Generating API Tokens:
 
 1. **GitHub API Token**:
 To interact with private repositories or to avoid rate limits with public repositories, you'll need a GitHub API token. Here's how to generate one:
@@ -35,10 +35,9 @@ Copy the key for use in the config.json or as an environment variable.
 
 ## 🔧 Configuration 
 
-### 📁 Option 1: Using a Config File
-Create a file named config.json in the same directory as the script.
-Populate the file with the following structure:
-
+#### 📁 Option 1: Using a Config File
+The first time the script is run, it will prompt you for the following values. 
+It saves them in a config.json file and won't ask again. 
 `{
     "GITHUB_API_KEY": "YOUR_GITHUB_API_KEY",
     "CHATGPT_API_KEY": "YOUR_OPENAI_API_KEY",
@@ -47,24 +46,9 @@ Populate the file with the following structure:
     "MODEL": "gpt-4"
 `}
 
-Replace the placeholders with the appropriate values.
-
-**`Note: You can generate this config.json using the included config.sh (linux / mac) or config.bat (Windows) scripts.`**
-
-#### Linux / Mac
-Make sure the script is executable: 
-
-`chmod +x config.sh`
-
-Then you can run the script with `./config.sh` to generate the `config.json` file.
-
-#### Windows
-Open your command prompt (and cd to the correct folder): 
-
-Run the script with `config.bat` to generate the `config.json` file.
-
-### 🌍 Option 2: Using Environment Variables
+#### 🌍 Option 2: Using Environment Variables
 If you don't use a config.json file, the script will fallback to reading from environment variables. 
+If any are missing, it will prompt.
 
 Ensure you have the following environment variables set:
 
@@ -74,7 +58,7 @@ Ensure you have the following environment variables set:
 * `export REPO_NAME="The name of the GitHub repository"`
 * `export MODEL="gpt-4"`
 
-### 📦 Dependencies
+#### 📦 Dependencies
 
 * requests
 * tiktoken
@@ -89,11 +73,10 @@ Install:
 If you get an error that PIP is not available, try running it with Python:
 `python -m pip install -r requirements.txt`
   
-
 If you prefer you can install them manually:
-`pip install {each library you need}` or `python -m pip install -r [package_name]`
+`pip install requests tiktoken tqdm termcolor`
 
-## 🚀 Usage - Generate a code review!
+# 🚀 Usage - Generate a code review!
 
 Set up your configuration using one of the methods mentioned above.
 Run the script using:

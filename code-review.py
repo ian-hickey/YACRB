@@ -7,7 +7,6 @@ import re
 import argparse
 from tqdm import tqdm
 from termcolor import colored
-
 from rate_limiter import RateLimiter
 
 def print_asc_logo(): 
