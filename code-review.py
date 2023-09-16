@@ -423,8 +423,15 @@ if __name__ == "__main__":
         review = review_code_with_chatgpt(diff, chatgpt_api_key, prompt, args)
     formatted_review = format_review(review, args.format)
     
+
     if args.output_file:
-        with open(args.output_file, 'w') as file:
+        # Check if 'out' directory exists, if not, create it
+        if not os.path.exists('out'):
+            os.makedirs('out')
+
+        # Ensure the output is saved in the 'out' subdirectory
+        output_path = os.path.join('out', args.output_file)
+        with open(output_path, 'w') as file:
             file.write(formatted_review)
     else:
         print("\n")
