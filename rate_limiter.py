@@ -30,7 +30,7 @@ class RateLimiter:
 
         # Seconds (if any left in the string)
         if 's' in duration:
-            seconds = int(duration.split('s')[0])
+            seconds = int(float(duration.split('s')[0]))
             total_seconds += seconds
 
         return total_seconds
